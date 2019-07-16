@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[4]:
-
-
 from data_loader import *
 import torch
 from torch.autograd import Variable
@@ -14,8 +11,6 @@ import torch.optim as optim
 import shutil
 import pickle
 
-
-# In[5]:
 
 
 def plotting_func_1( x, y, xlabel="Epochs", ylabel="Loss", ylegend="Validation Accuracy",title="Accuracy vs Epochs curve",):
@@ -50,10 +45,7 @@ def plotting_func_2( x, y1,y2, xlabel="Epochs", ylabel="Loss", y1legend="Validat
     plt.legend((y1legend,y2legend), loc='best')
     plt.show()
 
-    
 
-
-# In[6]:
 
 
 class Vanilla_RNN(nn.Module):
@@ -89,9 +81,6 @@ class Vanilla_RNN(nn.Module):
         return y_pred,hidden
 
 
-# In[7]:
-
-
 def validate(val_loader, model, criterion):
     losses = AverageMeter()
     acc = AverageMeter()
@@ -121,10 +110,6 @@ def validate(val_loader, model, criterion):
 
     return acc,losses
 
-
-# In[8]:
-
-
 class AverageMeter(object):
 
     def __init__(self):
@@ -153,9 +138,6 @@ def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
         
 
 
-# In[13]:
-
-
 # Setup: initialize the hyperparameters/variables
 num_epochs =  100  #100           # Number of full passes through the dataset
 batch_size = 1 #1         # Number of samples in each minibatch
@@ -172,10 +154,6 @@ else: # Otherwise, train on the CPU
     computing_device = torch.device("cpu")
     extras = False
     print("CUDA NOT supported")
-
-
-# In[15]:
-
 
 
 
@@ -207,7 +185,6 @@ loss_val_list=[]
 hidden=None
 
 
-# In[ ]:
 
 
 # Begin training procedure
@@ -308,190 +285,5 @@ print("Training complete after", epoch, "epochs")
 
 results = { "acc_train_list": acc_train_list, "acc_val_list": acc_val_list, "loss_train_list":loss_train_list,"loss_val_list":loss_val_list}
 pickle.dump( results, open( "own_results_base.p", "wb" ) )
-
-
-# In[16]:
-
-
-def toAbc1(numLabel,dictionary):
-    #take in onehot encoded data and transform it to abc
-
-    dic_val_list=list(dictionary.values())
-    dic_key_list=list(dictionary.keys()) 
-    abc=dic_key_list[dic_val_list.index(numLabel)]
-    #can be commented    
-    return abc
-
-
-# In[17]:
-
-
-from data_loader import *
-import torch
-from torch.autograd import Variable
-import torch.nn as nn
-import torch.nn.functional as func
-import torch.nn.init as torch_init
-import torch.optim as optim
-import shutil
-import pickle
-model = Vanilla_RNN(in_dim=94, out_dim=94,hid_dim=100,batch_size=16,no_layers=1)
-model = model.to(computing_device)
-checkpoint = torch.load('model_best.pth.tar')
-begin_epoch = checkpoint['epoch']
-best_prec1 = checkpoint['best_loss']
-model.load_state_dict(checkpoint['state_dict'])
-optimizer.load_state_dict(checkpoint['optimizer'])
-
-
-# In[18]:
-
-
-dictionary=pickle.load(open("dictionary_new.pkl","rb"))
-# from bidict import bidict 
-# reverse_dict = bidict(dictionary)
-# reverse_dict.inverse
-
-def sample(net, size, prime, dictionary):
-        
-    if(use_cuda):
-        computing_device = torch.device("cuda")
-    else:
-        computing_device = torch.device("cpu")
-    net = net.to(computing_device)
-    net.eval() 
-    
-    h = None
-    chars=list(prime)
-    lis=[]
-    for ch in chars:
-        chNum=dictionary[ch]
-        lis.append(chNum)
-    
-    lis=np.array(lis)
-    softmaxLayer=torch.nn.Softmax()
-    #pdb.set_trace()
-    #a=torch.tensor(np.squeeze(np.eye(94)[lis.reshape(-1)]).reshape([len(prime), 1, 94])).to(computing_device).float()
-    #pdb.set_trace()
-    inputPrim=torch.tensor(fromNumLabelToOneHot(lis,dictionary).reshape([len(prime), 1, 94])).to(computing_device).float()
-    with torch.no_grad():
-        char, h = net(inputPrim, None ) 
-         
-        softmaxOutput=func.softmax(char[-1,:])
-        p_p=softmaxOutput.cpu()
-        p_p = np.array(p_p) 
-        Val=np.random.choice(94, 1,p=p_p.reshape(94,))
-        chars.append(toAbc1(Val,dictionary))
-        newInput=fromNumLabelToOneHot(Val,dictionary)
-        for j in range(size):     
-            print(j)
-            inputPrimNew=torch.tensor(np.zeros((100,1,94),dtype=int))
-            #pdb.set_trace()
-            inputPrimNew[:-1,:]=inputPrim[1:,:]
-            inputPrimNew[-1,:]=torch.tensor(newInput)
-            inputPrim=inputPrimNew.to(computing_device).float()
-            char,h=net(inputPrim.view(len(prime),1,94),h)
-            softmaxOutput=func.softmax(char[-1,:])
-            p_p=softmaxOutput.cpu()
-            p_p = np.array(p_p) 
-            Val=np.random.choice(94, 1,p=p_p.reshape(94,))
-            chars.append(toAbc1(Val,dictionary))
-            newInput=fromNumLabelToOneHot(Val,dictionary)
-            #pdb.set_trace()
-    return chars
-
-
-# In[31]:
-
-
-result=(sample(model, 2000, '<start>\nX:19\nT:Dusty Miller, The\nR:hop jig\nD:Tommy Keane: The Piper\'s Apron\nZ:id:hn-slipjig-19\nM:9/8', dictionary))
-
-
-# In[32]:
-
-
-with open('generated.txt', 'w') as f:
-    for item in result:
-        f.write("%s" % item)
-
-
-# In[33]:
-
-
-''.join(result)
-
-
-# In[34]:
-
-
-''.join(result)
-
-
-# In[21]:
-
-
-view_results = pickle.load(open("own_results_base.p","rb"))
-
-
-# In[22]:
-
-
-plotting_func_2(range(num_epochs),view_results['acc_val_list'],view_results['acc_train_list'],xlabel="Epochs", ylabel="Accuracy", y1legend="Validation Accuracy",y2legend ="Training Accuracy",title="Accuracy vs Epochs curve",)
-
-
-# In[23]:
-
-
-plotting_func_2(range(num_epochs),view_results['loss_val_list'],view_results['loss_train_list'],xlabel="Epochs", ylabel="Loss", y1legend="Validation Loss",y2legend ="Training Loss",title="Loss vs Epochs curve",)
-
-
-# In[24]:
-
-
-def test(loader, model, criterion):
-    losses = AverageMeter()
-    acc = AverageMeter()
-    
-    # switch to evaluate mode
-    model.eval()  
-    hidden=None
-    for minibatch_count, (images, labels) in enumerate(loader, 0):
-        images=images.permute(1,0,2)
-        # Put the minibatch data in CUDA Tensors and run on the GPU if supported
-        images, labels = images.to(computing_device), labels.to(computing_device)
-        images=images.float()
-       
-        outputs,hidden = model(images,hidden)
-#         hidden[0].detach_()   Need to figure out why
-#         hidden[1].detach_()
-        hidden.detach_()
-        
-        labels=labels.view(-1)
-        loss = criterion(outputs, labels)
-        
-        softmaxOutput=func.softmax(outputs,dim=1)
-        modelDecision=torch.argmax(softmaxOutput,dim=1)
-        accuracy = calculate_acc(modelDecision,labels)
-        losses.update(loss.item(), labels.shape[0])
-        acc.update(accuracy, labels.shape[0])
-
-    return acc,losses
-
-
-# In[25]:
-
-
-acc_test,loss_test = test(test_loader, model, criterion)
-
-
-# In[26]:
-
-
-print(f"Test Accuracy : {acc_test.avg:.4f}, Test Loss : {loss_test.avg:.4f}")
-
-
-# In[ ]:
-
-
 
 
